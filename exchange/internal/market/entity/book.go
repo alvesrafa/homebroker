@@ -37,70 +37,39 @@ func (b *Book) Trade() {
 			buyOrders.Push(order)
 
 			if sellOrders.Len() > 0 && sellOrders.Orders[0].Price <= order.Price {
+				lastSellOrder := sellOrders.Pop().(*Order)
 
-				sellOrder := sellOrders.Pop().(*Order)
+				if lastSellOrder.PendingShares > 0 {
+					order.executeBuyOrder(b, lastSellOrder)
 
-				if sellOrder.PendingShares > 0 {
-
-					transaction := NewTransaction(sellOrder, order, order.Shares, sellOrder.Price)
-
-					b.AddTransaction(transaction, b.Wg)
-					sellOrder.Transactions = append(sellOrder.Transactions, transaction)
-					order.Transactions = append(order.Transactions, transaction)
-
-					b.OrdersChannelOut <- sellOrder
-					b.OrdersChannelOut <- order
-
-					if sellOrder.PendingShares > 0 {
-						sellOrders.Push(sellOrder)
+					if lastSellOrder.PendingShares > 0 {
+						sellOrders.Push(lastSellOrder)
 					}
 				}
-
 			}
 		} else if order.OrderType == "SELL" {
 			sellOrders.Push(order)
 
 			if buyOrders.Len() > 0 && buyOrders.Orders[0].Price >= order.Price {
+				lastBuyOrder := buyOrders.Pop().(*Order)
 
-				buyOrder := buyOrders.Pop().(*Order)
+				if lastBuyOrder.PendingShares > 0 {
+					order.executeSellOrder(b, lastBuyOrder)
 
-				if buyOrder.PendingShares > 0 {
-
-					transaction := NewTransaction(order, buyOrder, order.Shares, buyOrder.Price)
-
-					b.AddTransaction(transaction, b.Wg)
-					buyOrder.Transactions = append(buyOrder.Transactions, transaction)
-					order.Transactions = append(order.Transactions, transaction)
-
-					b.OrdersChannelOut <- buyOrder
-					b.OrdersChannelOut <- order
-
-					if buyOrder.PendingShares > 0 {
-						buyOrders.Push(buyOrder)
+					if lastBuyOrder.PendingShares > 0 {
+						buyOrders.Push(lastBuyOrder)
 					}
 				}
-
 			}
 		}
+
 	}
 }
 
 func (b *Book) AddTransaction(transaction *Transaction, wg *sync.WaitGroup) {
 	defer wg.Done() // defer -> Everything under this line will be executed and after that, this line will run
 
-	sellingShares := transaction.SellingOrder.PendingShares
-	buyingShares := transaction.BuyingOrder.PendingShares
-
-	minShares := sellingShares
-	if buyingShares < sellingShares {
-		minShares = buyingShares
-	}
-
-	transaction.SellingOrder.Investor.updateAssetPosition(transaction.SellingOrder.Asset.ID, -minShares)
-	transaction.AddSellingOrderPendingShares(-minShares)
-
-	transaction.BuyingOrder.Investor.updateAssetPosition(transaction.BuyingOrder.Asset.ID, minShares)
-	transaction.AddBuyingOrderPendingShares(-minShares)
+	transaction.UpdateInvestorAssetPosition()
 
 	transaction.CalculateTotal(transaction.Shares, transaction.BuyingOrder.Price)
 

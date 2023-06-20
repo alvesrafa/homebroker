@@ -25,3 +25,25 @@ func NewOrder(orderId string, investor *Investor, asset *Asset, shares int, pric
 		Transactions:  []*Transaction{},
 	}
 }
+
+func (o *Order) executeBuyOrder(book *Book, sellOrder *Order) {
+	transaction := NewTransaction(sellOrder, o, o.Shares, sellOrder.Price)
+	book.AddTransaction(transaction, book.Wg)
+
+	sellOrder.Transactions = append(sellOrder.Transactions, transaction)
+	o.Transactions = append(o.Transactions, transaction)
+
+	book.OrdersChannelOut <- sellOrder
+	book.OrdersChannelOut <- o
+}
+
+func (o *Order) executeSellOrder(book *Book, buyOrder *Order) {
+	transaction := NewTransaction(o, buyOrder, o.Shares, buyOrder.Price)
+	book.AddTransaction(transaction, book.Wg)
+
+	buyOrder.Transactions = append(buyOrder.Transactions, transaction)
+	o.Transactions = append(o.Transactions, transaction)
+
+	book.OrdersChannelOut <- buyOrder
+	book.OrdersChannelOut <- o
+}
