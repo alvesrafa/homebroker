@@ -32,6 +32,7 @@ func (b *Book) Trade() {
 
 	// loop infinito pq o tempo todo pode ficar caindo orders aqui
 	for order := range b.OrdersChannel {
+
 		if order.OrderType == "BUY" {
 			buyOrders.Push(order)
 
@@ -39,7 +40,7 @@ func (b *Book) Trade() {
 
 				sellOrder := sellOrders.Pop().(*Order)
 
-				if sellOrder.PedingShares > 0 {
+				if sellOrder.PendingShares > 0 {
 
 					transaction := NewTransaction(sellOrder, order, order.Shares, sellOrder.Price)
 
@@ -50,7 +51,7 @@ func (b *Book) Trade() {
 					b.OrdersChannelOut <- sellOrder
 					b.OrdersChannelOut <- order
 
-					if sellOrder.PedingShares > 0 {
+					if sellOrder.PendingShares > 0 {
 						sellOrders.Push(sellOrder)
 					}
 				}
@@ -63,7 +64,7 @@ func (b *Book) Trade() {
 
 				buyOrder := buyOrders.Pop().(*Order)
 
-				if buyOrder.PedingShares > 0 {
+				if buyOrder.PendingShares > 0 {
 
 					transaction := NewTransaction(order, buyOrder, order.Shares, buyOrder.Price)
 
@@ -74,7 +75,7 @@ func (b *Book) Trade() {
 					b.OrdersChannelOut <- buyOrder
 					b.OrdersChannelOut <- order
 
-					if buyOrder.PedingShares > 0 {
+					if buyOrder.PendingShares > 0 {
 						buyOrders.Push(buyOrder)
 					}
 				}
@@ -87,8 +88,8 @@ func (b *Book) Trade() {
 func (b *Book) AddTransaction(transaction *Transaction, wg *sync.WaitGroup) {
 	defer wg.Done() // defer -> Everything under this line will be executed and after that, this line will run
 
-	sellingShares := transaction.SellingOrder.PedingShares
-	buyingShares := transaction.BuyingOrder.PedingShares
+	sellingShares := transaction.SellingOrder.PendingShares
+	buyingShares := transaction.BuyingOrder.PendingShares
 
 	minShares := sellingShares
 	if buyingShares < sellingShares {
