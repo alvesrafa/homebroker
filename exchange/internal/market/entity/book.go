@@ -32,37 +32,39 @@ func (b *Book) Trade() {
 
 	// loop infinito pq o tempo todo pode ficar caindo orders aqui
 	for order := range b.OrdersChannel {
+		b.AddOrder(order, buyOrders, sellOrders)
+	}
+}
 
-		if order.OrderType == "BUY" {
-			buyOrders.Push(order)
+func (b *Book) AddOrder(order *Order, buyOrders *OrderQueue, sellOrders *OrderQueue) {
+	if order.OrderType == "BUY" {
+		buyOrders.Push(order)
 
-			if sellOrders.Len() > 0 && sellOrders.Orders[0].Price <= order.Price {
-				lastSellOrder := sellOrders.Pop().(*Order)
+		if sellOrders.Len() > 0 && sellOrders.Orders[0].Price <= order.Price {
+			lastSellOrder := sellOrders.Pop().(*Order)
+
+			if lastSellOrder.PendingShares > 0 {
+				order.executeBuyOrder(b, lastSellOrder)
 
 				if lastSellOrder.PendingShares > 0 {
-					order.executeBuyOrder(b, lastSellOrder)
-
-					if lastSellOrder.PendingShares > 0 {
-						sellOrders.Push(lastSellOrder)
-					}
-				}
-			}
-		} else if order.OrderType == "SELL" {
-			sellOrders.Push(order)
-
-			if buyOrders.Len() > 0 && buyOrders.Orders[0].Price >= order.Price {
-				lastBuyOrder := buyOrders.Pop().(*Order)
-
-				if lastBuyOrder.PendingShares > 0 {
-					order.executeSellOrder(b, lastBuyOrder)
-
-					if lastBuyOrder.PendingShares > 0 {
-						buyOrders.Push(lastBuyOrder)
-					}
+					sellOrders.Push(lastSellOrder)
 				}
 			}
 		}
+	} else if order.OrderType == "SELL" {
+		sellOrders.Push(order)
 
+		if buyOrders.Len() > 0 && buyOrders.Orders[0].Price >= order.Price {
+			lastBuyOrder := buyOrders.Pop().(*Order)
+
+			if lastBuyOrder.PendingShares > 0 {
+				order.executeSellOrder(b, lastBuyOrder)
+
+				if lastBuyOrder.PendingShares > 0 {
+					buyOrders.Push(lastBuyOrder)
+				}
+			}
+		}
 	}
 }
 
