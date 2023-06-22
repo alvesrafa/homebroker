@@ -12,7 +12,6 @@ RUN rm -rf go.mod main.go
 
 FROM scratch
 
-
 WORKDIR /app
 
 COPY --from=bigBuild /app/main .
