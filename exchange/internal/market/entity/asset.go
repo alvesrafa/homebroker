@@ -3,13 +3,13 @@ package entity
 type Asset struct {
 	ID           string
 	Name         string
-	MarketVloume int
+	MarketVolume int
 }
 
-func NewAsset(id string, name string, marketVloume int) *Asset {
+func NewAsset(id string, name string, marketVolume int) *Asset {
 	return &Asset{
 		ID:           id,
 		Name:         name,
-		MarketVloume: marketVloume,
+		MarketVolume: marketVolume,
 	}
 }
