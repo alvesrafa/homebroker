@@ -24,15 +24,29 @@ func NewBook(orderChan chan *Order, ordersChannelOut chan *Order, wg *sync.WaitG
 }
 
 func (b *Book) Trade() {
-	buyOrders := NewOrderQueue()
-	sellOrders := NewOrderQueue()
+	// buyOrders := NewOrderQueue()
+	// sellOrders := NewOrderQueue()
+	buyOrders := make(map[string]*OrderQueue)
+	sellOrders := make(map[string]*OrderQueue)
 
-	heap.Init(buyOrders)
-	heap.Init(sellOrders)
+	// heap.Init(buyOrders)
+	// heap.Init(sellOrders)
 
 	// loop infinito pq o tempo todo pode ficar caindo orders aqui
 	for order := range b.OrdersChannel {
-		b.AddOrder(order, buyOrders, sellOrders)
+		asset := order.Asset.ID
+
+		if buyOrders[asset] == nil {
+			buyOrders[asset] = NewOrderQueue()
+			heap.Init(buyOrders[asset])
+		}
+
+		if sellOrders[asset] == nil {
+			sellOrders[asset] = NewOrderQueue()
+			heap.Init(sellOrders[asset])
+		}
+
+		b.AddOrder(order, buyOrders[asset], sellOrders[asset])
 	}
 }
 
